@@ -1,0 +1,68 @@
+#!/usr/bin/env perl
+
+# vim: foldmethod=marker
+
+use strict;
+#no autovivification qw(fetch delete store exists strict);
+
+use Data::Dumper;
+use Carp;
+
+sub getopts($) { my ($argv_arg) = @_;
+    my $invalid = sub {
+            die ("$_[0]\n"
+                . "Usage:\n"
+                . q(    git brfp $FROM[..$TO] [--] $FILE)
+                . "\n");
+        };
+    my $from = undef;
+    my $to = undef;
+    my $file = undef;
+    my $expect = "range";
+    my @argv = @{$argv_arg};
+    
+    while (scalar @argv > 0) {
+        my $arg = shift @argv;
+        if (0) {
+        } elsif ($expect eq "range") {
+            my @parts = split /\.\./,$arg;
+            if (scalar @parts == 1) {
+                $from = $parts[0];
+                $to = "HEAD";
+            } elsif (scalar @parts == 2) {
+                $from = $parts[0];
+                $to = $parts[1];
+            } else {
+                $invalid->("Incorrect range: $arg");
+            }
+            $expect = "dashes";
+        } elsif (($expect eq "dashes") && ($arg eq "--")) {
+            $expect = "file";
+        } elsif ($expect eq "file" || $expect eq "dashes") {
+            $file = $arg;
+            $expect = "done";
+        } elsif ($expect eq "done") {
+            $invalid->("Extra arguments: $arg " . (join " ", @argv));
+        } else {
+            confess "Unexpected expect: $expect";
+        }
+    }
+
+    if ($expect ne "done") {
+        $invalid->("Too few parameters");
+    }
+
+    return [$from, $to, $file];
+}
+
+sub main($) { my ($argv) = @_;
+    print Dumper(getopts($argv));
+}
+
+if ($0 !~ /test\.pl/) {
+    eval { exit(main(\@ARGV)); };
+    if ($@ ne "") {
+        print STDERR "Error: $@";
+        exit(1);
+    }
+}
