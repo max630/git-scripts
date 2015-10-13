@@ -85,8 +85,8 @@ sub main($) { my ($argv) = @_;
     my ($from, $to, $file) = getopts($argv);
     my $revs = git_read_revs($from, $to);
     my $reverted_revs = revert_revs($revs);
-    my $revs_file = save_revs($reverted_revs);
-    git_blame($to, $from, $file, $revs_file);
+    my $revs_file = save_revs($revs);
+    git_blame($from, $to, $file, $revs_file);
     # TODO: enable
     # unlink($revs_file) or warn("Failed to remove $revs_file: $!");
 }
@@ -122,7 +122,8 @@ sub git_read_revs($$) { my ($from, $to) = @_;
 }
 
 sub git_blame($$$$) { my ($from, $to, $path, $revs_file) = @_;
-    print "git blame $from..$to -S $revs_file -- $path\n";
+    verify_cmdarg($from, $to, $revs_file, $path);
+    system "git blame $from..$to --reverse -S $revs_file -- $path\n";
 }
 # }}}
 
