@@ -5,8 +5,34 @@
 use strict;
 #no autovivification qw(fetch delete store exists strict);
 
-use Data::Dumper;
 use Carp;
+use Data::Dumper;
+use File::Temp qw(tempfile);
+
+# {{{ io utils
+sub verify_cmdarg(@) {
+    foreach my $arg (@_) {
+        if ($arg !~ /^[-a-z0-9_\.,\/]+$/i) {
+            die("Bad commandline argument: $arg");
+        }
+    }
+}
+
+sub iterate_popen(&$;$) { my ($code, $command, $separator) = @_;
+    open(my $in, "-|", $command) or confess "Cannot start a program: $!";
+    if (defined $separator) {
+        local $/ = $separator;
+        while (<$in>) {
+            $code->($_);
+        }
+    } else {
+        while (<$in>) {
+            $code->($_);
+        }
+    }
+    close ($in) or confess "Program failed";
+}
+# }}}
 
 sub getopts($) { my ($argv_arg) = @_;
     my $invalid = sub {
@@ -52,12 +78,53 @@ sub getopts($) { my ($argv_arg) = @_;
         $invalid->("Too few parameters");
     }
 
-    return [$from, $to, $file];
+    return ($from, $to, $file);
 }
 
 sub main($) { my ($argv) = @_;
-    print Dumper(getopts($argv));
+    my ($from, $to, $file) = getopts($argv);
+    my $revs = git_read_revs($from, $to);
+    my $reverted_revs = revert_revs($revs);
+    my $revs_file = save_revs($reverted_revs);
+    git_blame($to, $from, $file, $revs_file);
+    # TODO: enable
+    # unlink($revs_file) or warn("Failed to remove $revs_file: $!");
 }
+
+sub revert_revs($) { my ($revs) = @_;
+    my %result;
+    foreach my $c (keys %{$revs}) {
+        $result{$revs->{$c}} = $c;
+    }
+    return \%result;
+}
+
+sub save_revs($) { my ($revs) = @_;
+    my ($h, $path) = tempfile();
+    foreach my $c (keys %{$revs}) {
+        print $h ("$c $revs->{$c}\n") or confess("Write failed: $!");
+    }
+    close($h) or confess("Cannot save to $path: $!");
+    return $path;
+}
+
+# {{{ git utils
+sub git_read_revs($$) { my ($from, $to) = @_;
+    my %revs;
+    verify_cmdarg($from, $to);
+    iterate_popen {
+        my @hashes = split / /, $_;
+        my $commit = shift @hashes;
+        my $first_parent = shift @hashes;
+        $revs{$commit} = $first_parent;
+    } "git log  --first-parent --pretty=format:'%H %P' $from..$to";
+    return \%revs;
+}
+
+sub git_blame($$$$) { my ($from, $to, $path, $revs_file) = @_;
+    print "git blame $from..$to -S $revs_file -- $path\n";
+}
+# }}}
 
 if ($0 !~ /test\.pl/) {
     eval { exit(main(\@ARGV)); };
