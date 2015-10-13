@@ -12,7 +12,7 @@ use File::Temp qw(tempfile);
 # {{{ io utils
 sub verify_cmdarg(@) {
     foreach my $arg (@_) {
-        if ($arg !~ /^[-a-z0-9_\.,\/]+$/i) {
+        if ($arg !~ /^[-a-z0-9_\.,\/~]+$/i) {
             die("Bad commandline argument: $arg");
         }
     }
@@ -114,8 +114,8 @@ sub git_read_revs($$) { my ($from, $to) = @_;
     verify_cmdarg($from, $to);
     iterate_popen {
         my @hashes = split / /, $_;
-        my $commit = shift @hashes;
-        my $first_parent = shift @hashes;
+        my $commit = trim(shift @hashes);
+        my $first_parent = trim(shift @hashes);
         $revs{$commit} = $first_parent;
     } "git log  --first-parent --pretty=format:'%H %P' $from..$to";
     return \%revs;
@@ -125,6 +125,12 @@ sub git_blame($$$$) { my ($from, $to, $path, $revs_file) = @_;
     print "git blame $from..$to -S $revs_file -- $path\n";
 }
 # }}}
+
+sub trim($) { my ($s) = @_;
+    $s =~ s/^\s+//;
+    $s =~ s/\s+$//;
+    return $s;
+}
 
 if ($0 !~ /test\.pl/) {
     eval { exit(main(\@ARGV)); };
