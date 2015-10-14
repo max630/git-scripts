@@ -7,18 +7,44 @@ pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set}] -expand 1 -fi
 
 update
 
-set logChannel [open "|git log -z --all --pretty=format:%H:%P:%s"]
+set logChannel [open "|git log -z --all --topo-order --pretty=format:%H:%P:%s"]
 set logStrings [split [read $logChannel] "\0"]
 close $logChannel
 
+set ordered_commits {}
 foreach lline $logStrings {
-    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]+):(.*)$} $lline _allLine hash parents subject]} {
+    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]+):(.*)$} $lline _allLine hash mparents subject]} {
+        lappend ordered_commits $hash
         set subjects($hash) $subject
+        set parents($hash) [split $mparents " "]
     }
 }
 
-foreach h [array names subjects] {
-    .commits insert {} end -text $subjects($h)
+.commits insert {} end -id unmerged -text Unmerged
+# hash => (unmerged|trunk|$mergedToHash)
+array unset expected
+set expected(de7514e386466e4fed750e9524e159a75ece56ec) trunk
+foreach h $ordered_commits {
+    if {[info exists expected($h)]} {
+        set cinfo $expected($h)
+    } else {
+        set cinfo unmerged
+    }
+    switch -- $cinfo {
+        trunk {
+            .commits insert {} end -id $h -text $subjects($h)
+            set expected([lindex $parents($h) 0]) trunk
+            foreach ph [lrange $parents($h) 1 end] {
+                set expected($ph) $h
+            }
+        }
+        default {
+            .commits insert $cinfo end -id $h -text $subjects($h)
+            foreach ph $parents($h) {
+                set expected($ph) $h
+            }
+        }
+    }
 }
 
 
