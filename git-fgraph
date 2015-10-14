@@ -1,0 +1,24 @@
+#!/bin/sh
+# Tcl ignores the next line -*- tcl -*- \
+exec wish "$0" -- "$@"
+
+pack [scrollbar .commitsScroll -command {.commits yview}] -side right -fill y
+pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set}] -expand 1 -fill both
+
+update
+
+set logChannel [open "|git log -z --all --pretty=format:%H:%P:%s"]
+set logStrings [split [read $logChannel] "\0"]
+close $logChannel
+
+foreach lline $logStrings {
+    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]+):(.*)$} $lline _allLine hash parents subject]} {
+        set subjects($hash) $subject
+    }
+}
+
+foreach h [array names subjects] {
+    .commits insert {} end -text $subjects($h)
+}
+
+
