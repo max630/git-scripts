@@ -41,7 +41,7 @@ foreach h $ordered_commits {
         default {
             .commits insert $cinfo end -id $h -text $subjects($h)
             foreach ph $parents($h) {
-                set expected($ph) $h
+                set expected($ph) $cinfo
             }
         }
     }
