@@ -7,6 +7,13 @@ package require Ttk
 
 pack [scrollbar .commitsScroll -command {.commits yview}] -side right -fill y
 pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree] -expand 1 -fill both
+.commits tag configure link -foreground blue
+.commits tag bind link <Double-Button-1> {
+    set target $linkTargets([.commits identify item %x %y])
+    .commits see $target
+    .commits selection set $target
+    .commits focus $target
+}
 
 update
 
@@ -34,6 +41,7 @@ array unset expected
 proc expected_update {h mp1 mh1} {
     global expected
     global subjects
+    global linkTargets
 
     if {![info exists expected($h)]} {
         set expected($h) [list $mp1 $mh1]
@@ -48,7 +56,9 @@ proc expected_update {h mp1 mh1} {
         } else {
             set lp $mh1
         }
-        .commits insert $lp end -text "...$subjects($h)"
+        set lid [.commits insert $lp end -text "...$subjects($h)"]
+        .commits tag add link $lid
+        set linkTargets($lid) $h
     }
 }
 
