@@ -21,28 +21,34 @@ foreach lline $logStrings {
 }
 
 .commits insert {} end -id unmerged -text Unmerged
-# hash => ($trunk_num|{$trunk_num $mergedToHash})
-array unset expected
-set expected(de7514e386466e4fed750e9524e159a75ece56ec) 1
+# hash => $num
+array unset expected_priority
+# hash => $hash|trunk
+array unset expected_mergedTo
+set expected_priority(de7514e386466e4fed750e9524e159a75ece56ec) 1
+set expected_mergedTo(de7514e386466e4fed750e9524e159a75ece56ec) trunk
 foreach h $ordered_commits {
-    if {[info exists expected($h)]} {
-        set cinfo $expected($h)
+    if {[info exists expected_priority($h)]} {
+        set pr $expected_priority($h)
+        set mt $expected_mergedTo($h)
     } else {
-        set cinfo {0 unmerged}
+        set pr 0
+        set mt unmerged
     }
-    if {[llength $cinfo] == 1} {
+    if {$mt eq "trunk"} {
         .commits insert {} end -id $h -text $subjects($h)
-        set expected([lindex $parents($h) 0]) [expr $cinfo + 1]
+        set expected_priority([lindex $parents($h) 0]) [expr $pr + 1]
+        set expected_mergedTo([lindex $parents($h) 0]) trunk
         foreach ph [lrange $parents($h) 1 end] {
-            set expected($ph) [list $cinfo $h]
+            set expected_priority($ph) $pr
+            set expected_mergedTo($ph) $h
         }
     } else {
-        set mp [lindex $cinfo 0]
-        set mh [lindex $cinfo 1]
-        .commits insert $mh end -id $h -text $subjects($h)
+        .commits insert $mt end -id $h -text $subjects($h)
         foreach ph $parents($h) {
-            if {![info exists expected($ph)] || [lindex $expected($ph) 0] < $mp} {
-                set expected($ph) $cinfo
+            if {![info exists expected_priority($ph)] || [lindex $expected_priority($ph) 0] < $pr} {
+                set expected_priority($ph) $pr
+                set expected_mergedTo($ph) $mt
             }
         }
     }
