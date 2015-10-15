@@ -6,7 +6,7 @@ package require Tk
 package require Ttk
 
 pack [scrollbar .commitsScroll -command {.commits yview}] -side right -fill y
-pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set}] -expand 1 -fill both
+pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree] -expand 1 -fill both
 
 update
 
