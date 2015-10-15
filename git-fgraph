@@ -11,35 +11,36 @@ set logChannel [open "|git log -z --all --topo-order --pretty=format:%H:%P:%s"]
 set logStrings [split [read $logChannel] "\0"]
 close $logChannel
 
+set ordered_commits {}
+foreach lline $logStrings {
+    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]+):(.*)$} $lline _allLine hash mparents subject]} {
+        lappend ordered_commits $hash
+        set subjects($hash) $subject
+        set parents($hash) [split $mparents " "]
+    }
+}
+
 .commits insert {} end -id unmerged -text Unmerged
 # hash => ($trunk_num|{$trunk_num $mergedToHash})
 array unset expected
 set expected(de7514e386466e4fed750e9524e159a75ece56ec) 1
-foreach lline $logStrings {
-    # parse
-    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]+):(.*)$} $lline _allLine hash mparents subject]} {
-        set parents [split $mparents " "]
-    } else {
-        continue
-    }
-
-    #insert control
-    if {[info exists expected($hash)]} {
-        set cinfo $expected($hash)
+foreach h $ordered_commits {
+    if {[info exists expected($h)]} {
+        set cinfo $expected($h)
     } else {
         set cinfo {0 unmerged}
     }
     if {[llength $cinfo] == 1} {
-        .commits insert {} end -id $hash -text $subject
-        set expected([lindex $parents 0]) [expr $cinfo + 1]
-        foreach ph [lrange $parents 1 end] {
-            set expected($ph) [list $cinfo $hash]
+        .commits insert {} end -id $h -text $subjects($h)
+        set expected([lindex $parents($h) 0]) [expr $cinfo + 1]
+        foreach ph [lrange $parents($h) 1 end] {
+            set expected($ph) [list $cinfo $h]
         }
     } else {
         set mp [lindex $cinfo 0]
         set mh [lindex $cinfo 1]
-        .commits insert $mh end -id $hash -text $subject
-        foreach ph $parents {
+        .commits insert $mh end -id $h -text $subjects($h)
+        foreach ph $parents($h) {
             if {![info exists expected($ph)] || [lindex $expected($ph) 0] < $mp} {
                 set expected($ph) $cinfo
             }
