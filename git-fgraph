@@ -22,6 +22,19 @@ pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree] -e
     .commits selection set $target
     .commits focus $target
 }
+bind .commits <Control-c> {
+    if {[.commits focus] ne {}} {
+        if {[info exists linkTargets([.commits focus])]} {
+            set res $linkTargets([.commits focus])
+        } else {
+            set res [.commits focus]
+        }
+        clipboard clear
+        clipboard append $res
+        puts "h: $res"
+        # TODO: selection also
+    }
+}
 
 update
 
