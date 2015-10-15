@@ -33,17 +33,22 @@ puts "parsing: [expr $t1 - $t0]"
 array unset expected
 proc expected_update {h mp1 mh1} {
     global expected
+    global subjects
 
     if {![info exists expected($h)]} {
         set expected($h) [list $mp1 $mh1]
+        return {}
     } else {
         set e0 $expected($h)
         set mp0 [lindex $e0 0]
         set mh0 [lindex $e0 1]
         if {$mp1 > $mp0} {
             set expected($h) [list $mp1 $mh1]
+            set lp $mh0
         } else {
+            set lp $mh1
         }
+        .commits insert $lp end -text "...$subjects($h)"
     }
 }
 
