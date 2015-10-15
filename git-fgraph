@@ -29,31 +29,32 @@ set t1 [clock clicks -milliseconds]
 puts "parsing: [expr $t1 - $t0]"
 
 .commits insert {} end -id unmerged -text Unmerged
-# hash => ($trunk_num|{$trunk_num $mergedToHash})
+# hash => {$trunk_num $mergedToHash}
 array unset expected
-set expected(de7514e386466e4fed750e9524e159a75ece56ec) 1
+set expected(de7514e386466e4fed750e9524e159a75ece56ec) {1 {}}
 foreach hash $ordered_commits {
     if {[info exists expected($hash)]} {
         set cinfo $expected($hash)
     } else {
         set cinfo {0 unmerged}
     }
-    if {[llength $cinfo] == 1} {
-        .commits insert {} end -id $hash -text $subjects($hash)
-        set expected([lindex $parents($hash) 0]) [expr $cinfo + 1]
+    set mp [lindex $cinfo 0]
+    set mh [lindex $cinfo 1]
+    # puts "$hash->$cinfo"
+    .commits insert $mh end -id $hash -text $subjects($hash)
+    if {$mh eq ""} {
+        set expected([lindex $parents($hash) 0]) [list [expr $mp + 1] $mh]
         foreach ph [lrange $parents($hash) 1 end] {
-            set expected($ph) [list $cinfo $hash]
+            set expected($ph) [list $mp $hash]
         }
     } else {
-        set mp [lindex $cinfo 0]
-        set mh [lindex $cinfo 1]
-        .commits insert $mh end -id $hash -text $subjects($hash)
         foreach ph $parents($hash) {
             if {![info exists expected($ph)] || [lindex $expected($ph) 0] < $mp} {
-                set expected($ph) $cinfo
+                set expected($ph) [list $mp $mh]
             }
         }
     }
+    unset -nocomplain expected($hash)
 }
 set t2 [clock clicks -milliseconds]
 puts "rendering: [expr $t2 - $t1], total [expr $t2 - $t0]"
