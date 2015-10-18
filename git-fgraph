@@ -49,10 +49,10 @@ close $headChannel
 set t0 [clock clicks -milliseconds]
 set ordered_commits {}
 foreach lline $logStrings {
-    if {[regexp -nocase {^( \((([^\.]|\.[^\.])*)\))?\.\.([0-9a-f]+):([0-9a-f ]*):(.*)$} $lline _allLine branch _d1 _d2 hash mparents subject]} {
+    if {[regexp -nocase {^( \((([^\.]|\.[^\.])*)\))?\.\.([0-9a-f]+):([0-9a-f ]*):(.*)$} $lline _allLine _d1 branch _d2 hash mparents subject]} {
         lappend ordered_commits $hash
         if {$branch ne ""} {
-            set branches($hash) [lindex [split $branch " "] 0]
+            set branches($hash) [lindex [split $branch ","] 0]
         }
         set subjects($hash) $subject
         set parents($hash) [split $mparents " "]
@@ -106,11 +106,18 @@ proc lless {l1 l2} {
 }
 
 set expected($headHash) {{1} {}}
+set unmerged_mp 0
 foreach hash $ordered_commits {
     if {[info exists expected($hash)]} {
         set cinfo $expected($hash)
     } else {
-        set cinfo {{0 0} unmerged}
+        if {[info exists branches($hash)]} {
+            set bn $branches($hash)
+        } else {
+            set bn "....."
+        }
+        set bId [.commits insert unmerged end -text $bn]
+        set cinfo [list [list 0 0 $unmerged_mp] $bId]
     }
     set mp [lindex $cinfo 0]
     set mh [lindex $cinfo 1]
