@@ -38,7 +38,7 @@ bind .commits <Control-c> {
 
 update
 
-set logChannel [open "|git log -z --all --topo-order --pretty=format:%H:%P:%s"]
+set logChannel [open "|git log -z --all --topo-order --pretty=format:%d..%H:%P:%s"]
 set logStrings [split [read $logChannel] "\0"]
 close $logChannel
 
@@ -49,12 +49,15 @@ close $headChannel
 set t0 [clock clicks -milliseconds]
 set ordered_commits {}
 foreach lline $logStrings {
-    if {[regexp -nocase {^([0-9a-f]+):([0-9a-f ]*):(.*)$} $lline _allLine hash mparents subject]} {
+    if {[regexp -nocase {^( \((([^\.]|\.[^\.])*)\))?\.\.([0-9a-f]+):([0-9a-f ]*):(.*)$} $lline _allLine branch _d1 _d2 hash mparents subject]} {
         lappend ordered_commits $hash
+        if {$branch ne ""} {
+            set branches($hash) [lindex [split $branch " "] 0]
+        }
         set subjects($hash) $subject
         set parents($hash) [split $mparents " "]
     } else {
-        # need to hadle also root commits but logic does not accept them
+        puts "cannot parse: $lline"
     }
 }
 set t1 [clock clicks -milliseconds]
