@@ -5,8 +5,11 @@ exec wish "$0" -- "$@"
 package require Tk
 package require Ttk
 
+pack [frame .top] -side top -fill x
+pack [button .top.back -text Back -command goBack] \
+    [button .top.copy -text "Copy name" -command copyCommit] -side left
 pack [scrollbar .commitsScroll -command {.commits yview}] -side right -fill y
-pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree] -expand 1 -fill both
+pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree -takefocus 1 -selectmode browse] -expand 1 -fill both
 .commits tag configure link -foreground blue
 .commits tag bind link <Double-Button-1> {
     set target $linkTargets([.commits identify item %x %y])
@@ -17,24 +20,13 @@ pack [ttk::treeview .commits -yscrollcommand {.commitsScroll set} -show tree] -e
     }
 }
 .commits tag bind link <Key-Return> {
-    set target $linkTargets([.commits focus])
+    set target $linkTargets([.commits selection])
     .commits see $target
     .commits selection set $target
     .commits focus $target
 }
-bind .commits <Control-c> {
-    if {[.commits focus] ne {}} {
-        if {[info exists linkTargets([.commits focus])]} {
-            set res $linkTargets([.commits focus])
-        } else {
-            set res [.commits focus]
-        }
-        clipboard clear
-        clipboard append $res
-        puts "h: $res"
-        # TODO: selection also
-    }
-}
+bind .commits <Control-c> { copyCommit }
+bind .commits <<TreeviewSelect>> commitsOnSelect
 
 update
 
@@ -136,4 +128,34 @@ foreach hash $ordered_commits {
 set t2 [clock clicks -milliseconds]
 puts "rendering: [expr $t2 - $t1], total [expr $t2 - $t0]"
 
+proc copyCommit {} {
+    if {[.commits selection] ne {}} {
+        if {[info exists linkTargets([.commits selection])]} {
+            set res $linkTargets([.commits selection])
+        } else {
+            set res [.commits selection]
+        }
+        clipboard clear
+        clipboard append $res
+        puts "h: $res"
+        # TODO: selection also
+    }
+}
+
+set selection_history {}
+set selection_last {}
+set selection_pos end
+proc commitsOnSelect {} {
+    global selection_history selection_last
+
+    set selection [.commits selection]
+    if {$selection ne {} && $selection ne $selection_last} {
+        lappend selection_history $selection
+        set selection_last $selection
+    }
+}
+
+proc goBack {} {
+    
+}
 
