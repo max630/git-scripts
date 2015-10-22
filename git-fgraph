@@ -114,7 +114,12 @@ foreach hash $ordered_commits {
     set mp [lindex $cinfo 0]
     set mh [lindex $cinfo 1]
     # puts "$hash->$cinfo"
-    .commits insert $mh end -id $hash -text $subjects($hash)
+    if {[info exists branches($hash)]} {
+        set label "($branches($hash)) $subjects($hash)"
+    } else {
+        set label $subjects($hash)
+    }
+    .commits insert $mh end -id $hash -text $label
     if {[llength $parents($hash)] > 0} {
         set mp_last [lindex $mp end]
         expected_update [lindex $parents($hash) 0] [lreplace $mp end end [expr $mp_last + 1]] $mh
