@@ -1,0 +1,45 @@
+#!/bin/sh
+
+set -e
+
+OPTS_SPEC="\
+git advance [options] <branch> [<commit>]
+
+git-advance moves the branch only if it's fast-forward
+--
+h,help          show the help
+first-parent    allow only advance along first-parent chain (default on)"
+
+parsed=$(printf "%s\n" "$OPTS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)
+eval "$parsed"
+
+fp=true
+while test "$1" != "--"
+do
+    case "$1" in
+    --first-parent) fp=true;;
+    --no-first-parent) fp=;;
+    *) echo "unknown option: $1"; exit 1;;
+    esac
+    shift
+done
+
+branch="$1"
+if test -n "$2"
+then commit="$2"
+else commit=$(git rev-parse HEAD)
+fi
+
+if test -n "$fp"
+then
+    echo "--first-parent not implemented"
+    exit 1
+else
+    if ! git merge-base --is-ancestor "$branch" "$commit"
+    then
+        echo "$branch is not an ancestor of target $commit"
+        exit 1
+    fi
+fi
+
+git branch -f "$branch" "$commit"
